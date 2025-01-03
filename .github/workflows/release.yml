@@ -51,4 +51,4 @@ jobs:
   release:
     needs:
       - test
-    uses: semantic-release-action/github-actions/.github/workflows/release.yml@v5
+    uses: BitGo/semantic-release-github-actions/.github/workflows/release.yml@v5
