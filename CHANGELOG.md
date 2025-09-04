@@ -1,3 +1,10 @@
+# [2.5.0](https://github.com/BitGo/install-github-release-binary/compare/v2.4.40...v2.5.0) (2025-09-04)
+
+
+### Features
+
+* support ignoring an existing version of the binary ([5525cfc](https://github.com/BitGo/install-github-release-binary/commit/5525cfc3e421cf6808a7d7f8dc558d59f2053b87))
+
 ## [2.4.40](https://github.com/EricCrosson/install-github-release-binary/compare/v2.4.39...v2.4.40) (2024-12-21)
 
 
