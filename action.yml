@@ -16,6 +16,9 @@ inputs:
   cache:
     description: Runtime switch to enable/disable caching because GitHub is debugging issues in their caching API
     default: false
+  ignore-existing-binary:
+    description: Skip download if the binary already exists at the destination
+    default: false
 
 runs:
   using: node20
