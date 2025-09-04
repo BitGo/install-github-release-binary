@@ -52,3 +52,5 @@ jobs:
     needs:
       - test
     uses: BitGo/semantic-release-github-actions/.github/workflows/release.yml@v5
+    with:
+      disable-semantic-release-git: true
