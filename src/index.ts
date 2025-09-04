@@ -46,6 +46,7 @@ async function installGitHubReleaseBinary(
   targetRelease: TargetRelease,
   storageDirectory: string,
   token: string,
+  ignoreExisting: boolean,
 ): Promise<void> {
   const targetTriple = getTargetTriple(arch(), platform());
 
@@ -81,6 +82,15 @@ async function installGitHubReleaseBinary(
   );
 
   fs.mkdirSync(destinationDirectory, { recursive: true });
+
+  // Check if file already exists and skip if ignoreExisting is true
+  if (fs.existsSync(destinationFilename)) {
+    if (ignoreExisting) {
+      core.info(`Binary already exists at ${destinationFilename}, ignoring and leaving system as-is`);
+      return;
+    }
+  }
+
   await tc.downloadTool(
     releaseAsset.url,
     destinationFilename,
@@ -120,6 +130,7 @@ async function main(): Promise<void> {
   );
   const maybeTargetReleases = parseTargetReleases(core.getInput("targets"));
   const maybeHomeDirectory = parseEnvironmentVariable("HOME");
+  const ignoreExisting = core.getBooleanInput("ignore-existing-binary");
 
   const errors = [maybeToken, maybeTargetReleases, maybeHomeDirectory].flatMap(
     getErrors,
@@ -149,6 +160,7 @@ async function main(): Promise<void> {
         targetRelease,
         storageDirectory,
         token,
+        ignoreExisting,
       ),
     ),
   );
