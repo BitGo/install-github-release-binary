@@ -87,6 +87,8 @@ async function installGitHubReleaseBinary(
   if (fs.existsSync(destinationFilename)) {
     if (ignoreExisting) {
       core.info(`Binary already exists at ${destinationFilename}, ignoring and leaving system as-is`);
+      // Still add the directory to PATH so the binary can be found
+      core.addPath(destinationDirectory);
       return;
     }
   }
