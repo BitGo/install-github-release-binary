@@ -10198,6 +10198,7 @@ async function installGitHubReleaseBinary(octokit, targetRelease, storageDirecto
   if (fs.existsSync(destinationFilename)) {
     if (ignoreExisting) {
       core2.info(`Binary already exists at ${destinationFilename}, ignoring and leaving system as-is`);
+      core2.addPath(destinationDirectory);
       return;
     }
   }
