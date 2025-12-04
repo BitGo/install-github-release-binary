@@ -199,3 +199,187 @@ test(
     ]),
   ),
 );
+
+test(
+  "should parse a major version with prerelease",
+  check(
+    "foo/bar@v1-beta",
+    ok([
+      {
+        slug: {
+          owner: "foo",
+          repository: "bar",
+        },
+        binaryName: none(),
+        tag: "v1-beta" as SemanticVersion,
+        checksum: none(),
+      },
+    ]),
+  ),
+);
+
+test(
+  "should parse a major version with prerelease and number",
+  check(
+    "foo/bar@v1-beta.123",
+    ok([
+      {
+        slug: {
+          owner: "foo",
+          repository: "bar",
+        },
+        binaryName: none(),
+        tag: "v1-beta.123" as SemanticVersion,
+        checksum: none(),
+      },
+    ]),
+  ),
+);
+
+test(
+  "should parse a major.minor version with prerelease",
+  check(
+    "foo/bar@v1.1-beta",
+    ok([
+      {
+        slug: {
+          owner: "foo",
+          repository: "bar",
+        },
+        binaryName: none(),
+        tag: "v1.1-beta" as SemanticVersion,
+        checksum: none(),
+      },
+    ]),
+  ),
+);
+
+test(
+  "should parse a major.minor version with prerelease and number",
+  check(
+    "foo/bar@v1.1-beta.123",
+    ok([
+      {
+        slug: {
+          owner: "foo",
+          repository: "bar",
+        },
+        binaryName: none(),
+        tag: "v1.1-beta.123" as SemanticVersion,
+        checksum: none(),
+      },
+    ]),
+  ),
+);
+
+test(
+  "should parse a major.minor.patch version with prerelease",
+  check(
+    "foo/bar@v1.2.3-alpha.1",
+    ok([
+      {
+        slug: {
+          owner: "foo",
+          repository: "bar",
+        },
+        binaryName: none(),
+        tag: "v1.2.3-alpha.1" as SemanticVersion,
+        checksum: none(),
+      },
+    ]),
+  ),
+);
+
+test(
+  "should parse a major version with build metadata",
+  check(
+    "foo/bar@v1+build.123",
+    ok([
+      {
+        slug: {
+          owner: "foo",
+          repository: "bar",
+        },
+        binaryName: none(),
+        tag: "v1+build.123" as SemanticVersion,
+        checksum: none(),
+      },
+    ]),
+  ),
+);
+
+test(
+  "should parse a major.minor version with build metadata",
+  check(
+    "foo/bar@v1.1+build.123",
+    ok([
+      {
+        slug: {
+          owner: "foo",
+          repository: "bar",
+        },
+        binaryName: none(),
+        tag: "v1.1+build.123" as SemanticVersion,
+        checksum: none(),
+      },
+    ]),
+  ),
+);
+
+test(
+  "should parse a major.minor.patch version with prerelease and build metadata",
+  check(
+    "foo/bar@v1.2.3-rc.1+build.456",
+    ok([
+      {
+        slug: {
+          owner: "foo",
+          repository: "bar",
+        },
+        binaryName: none(),
+        tag: "v1.2.3-rc.1+build.456" as SemanticVersion,
+        checksum: none(),
+      },
+    ]),
+  ),
+);
+
+test(
+  "should parse a major version with prerelease and checksum",
+  check(
+    "foo/bar@v1-beta:sha256-8a4600be96d2ec013209042458ce97a9652fcc46c1c855d0217aa42e330fc06e",
+    ok([
+      {
+        slug: {
+          owner: "foo",
+          repository: "bar",
+        },
+        binaryName: none(),
+        tag: "v1-beta" as SemanticVersion,
+        checksum: some(
+          "8a4600be96d2ec013209042458ce97a9652fcc46c1c855d0217aa42e330fc06e" as Sha256Hash,
+        ),
+      },
+    ]),
+  ),
+);
+
+test(
+  "should parse a major.minor version with prerelease and checksum",
+  check(
+    "foo/bar@v1.1-beta.123:sha256-8a4600be96d2ec013209042458ce97a9652fcc46c1c855d0217aa42e330fc06e",
+    ok([
+      {
+        slug: {
+          owner: "foo",
+          repository: "bar",
+        },
+        binaryName: none(),
+        tag: "v1.1-beta.123" as SemanticVersion,
+        checksum: some(
+          "8a4600be96d2ec013209042458ce97a9652fcc46c1c855d0217aa42e330fc06e" as Sha256Hash,
+        ),
+      },
+    ]),
+  ),
+);
