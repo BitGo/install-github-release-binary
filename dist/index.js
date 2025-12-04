@@ -9908,8 +9908,8 @@ var regexes = {
   owner: /[^\s\/]+/,
   repository: /[^\s\/]+/,
   binaryName: /[^\s@]+/,
-  majorSemanticVersion: /v(?:0|[1-9]\d*)/,
-  majorMinorSemanticVersion: /v(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)/,
+  majorSemanticVersion: /v(?:0|[1-9]\d*)(?:-(?:(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+(?:[0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?/,
+  majorMinorSemanticVersion: /v(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)(?:-(?:(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+(?:[0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?/,
   exactSemanticVersion: /v(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)(?:-(?:(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+(?:[0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?/,
   sha256Hash: /[a-fA-F0-9]{64}/
 };
