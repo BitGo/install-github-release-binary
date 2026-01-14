@@ -10148,12 +10148,22 @@ async function fetchReleaseAssetMetadataFromTag(octokit, slug, binaryName, tag, 
   if (isSome(binaryName)) {
     const targetLabelTraditional = `${binaryName.value}-${targetTriple}`;
     const targetLabelDuple = `${binaryName.value}-${targetDuple}`;
-    const asset2 = releaseMetadata.data.assets.find(
-      (asset3) => typeof asset3.label === "string" && (asset3.label === targetLabelTraditional || asset3.label === targetLabelDuple)
-    );
+    const asset2 = releaseMetadata.data.assets.find((asset3) => {
+      if (typeof asset3.label === "string") {
+        if (asset3.label === targetLabelTraditional || asset3.label === targetLabelDuple) {
+          return true;
+        }
+      }
+      if (typeof asset3.name === "string") {
+        if (asset3.name === targetLabelTraditional || asset3.name === targetLabelDuple) {
+          return true;
+        }
+      }
+      return false;
+    });
     if (asset2 === void 0) {
       throw new Error(
-        `Expected to find asset in release ${slug.owner}/${slug.repository}@${tag} with label ${targetLabelTraditional} or ${targetLabelDuple}`
+        `Expected to find asset in release ${slug.owner}/${slug.repository}@${tag} with label or name ${targetLabelTraditional} or ${targetLabelDuple}`
       );
     }
     return {
@@ -10161,12 +10171,22 @@ async function fetchReleaseAssetMetadataFromTag(octokit, slug, binaryName, tag, 
       url: asset2.url
     };
   }
-  const matchingAssets = releaseMetadata.data.assets.filter(
-    (asset2) => typeof asset2.label === "string" && (asset2.label.endsWith(targetTriple) || asset2.label.endsWith(targetDuple))
-  );
+  const matchingAssets = releaseMetadata.data.assets.filter((asset2) => {
+    if (typeof asset2.label === "string") {
+      if (asset2.label.endsWith(targetTriple) || asset2.label.endsWith(targetDuple)) {
+        return true;
+      }
+    }
+    if (typeof asset2.name === "string") {
+      if (asset2.name.endsWith(targetTriple) || asset2.name.endsWith(targetDuple)) {
+        return true;
+      }
+    }
+    return false;
+  });
   if (matchingAssets.length === 0) {
     throw new Error(
-      `Expected to find asset in release ${slug.owner}/${slug.repository}@${tag} with label ending in ${targetTriple} or ${targetDuple}`
+      `Expected to find asset in release ${slug.owner}/${slug.repository}@${tag} with label or name ending in ${targetTriple} or ${targetDuple}`
     );
   }
   if (matchingAssets.length > 1) {
@@ -10177,7 +10197,13 @@ To resolve, specify the desired binary with the target format ${slug.owner}/${sl
     );
   }
   const asset = matchingAssets.shift();
-  const targetName = stripTargetTriple(asset.label);
+  let matchField;
+  if (typeof asset.label === "string" && (asset.label.endsWith(targetTriple) || asset.label.endsWith(targetDuple))) {
+    matchField = asset.label;
+  } else {
+    matchField = asset.name;
+  }
+  const targetName = stripTargetTriple(matchField);
   return {
     binaryName: targetName,
     url: asset.url

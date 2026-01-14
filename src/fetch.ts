@@ -1,7 +1,6 @@
 import type { Octokit } from "./octokit";
 import { isEqual, isSome, none, Option, some } from "./option";
 import { stripTargetTriple } from "./platform";
-import type { TargetDuple } from "./types";
 
 import {
   isExactSemanticVersion,
@@ -9,6 +8,7 @@ import {
   RepositorySlug,
   SemanticVersion,
   Sha1Hash,
+  TargetDuple,
   TargetTriple,
   BinaryName,
 } from "./types";
@@ -148,15 +148,27 @@ export async function fetchReleaseAssetMetadataFromTag(
     const targetLabelTraditional = `${binaryName.value}-${targetTriple}`;
     const targetLabelDuple = `${binaryName.value}-${targetDuple}`;
 
-    const asset = releaseMetadata.data.assets.find(
-      (asset) =>
-        typeof asset.label === "string" &&
-        (asset.label === targetLabelTraditional || asset.label === targetLabelDuple),
-    );
+    const asset = releaseMetadata.data.assets.find((asset) => {
+      // Check for label match
+      if (typeof asset.label === "string") {
+        if (asset.label === targetLabelTraditional || asset.label === targetLabelDuple) {
+          return true;
+        }
+      }
+
+      // Check for name match
+      if (typeof asset.name === "string") {
+        if (asset.name === targetLabelTraditional || asset.name === targetLabelDuple) {
+          return true;
+        }
+      }
+
+      return false;
+    });
 
     if (asset === undefined) {
       throw new Error(
-        `Expected to find asset in release ${slug.owner}/${slug.repository}@${tag} with label ${targetLabelTraditional} or ${targetLabelDuple}`,
+        `Expected to find asset in release ${slug.owner}/${slug.repository}@${tag} with label or name ${targetLabelTraditional} or ${targetLabelDuple}`,
       );
     }
 
@@ -171,14 +183,27 @@ export async function fetchReleaseAssetMetadataFromTag(
   // 2. There is an asset label matching the target triple or target duple.
   // In both cases, we assume that's the binary the user meant.
   // If there is ambiguity, exit with an error.
-  const matchingAssets = releaseMetadata.data.assets.filter(
-    (asset) =>
-      typeof asset.label === "string" &&
-      (asset.label.endsWith(targetTriple) || asset.label.endsWith(targetDuple)),
-  );
+  const matchingAssets = releaseMetadata.data.assets.filter((asset) => {
+    // Check label match
+    if (typeof asset.label === "string") {
+      if (asset.label.endsWith(targetTriple) || asset.label.endsWith(targetDuple)) {
+        return true;
+      }
+    }
+
+    // Check name match
+    if (typeof asset.name === "string") {
+      if (asset.name.endsWith(targetTriple) || asset.name.endsWith(targetDuple)) {
+        return true;
+      }
+    }
+
+    return false;
+  });
+
   if (matchingAssets.length === 0) {
     throw new Error(
-      `Expected to find asset in release ${slug.owner}/${slug.repository}@${tag} with label ending in ${targetTriple} or ${targetDuple}`,
+      `Expected to find asset in release ${slug.owner}/${slug.repository}@${tag} with label or name ending in ${targetTriple} or ${targetDuple}`,
     );
   }
   if (matchingAssets.length > 1) {
@@ -189,7 +214,17 @@ To resolve, specify the desired binary with the target format ${slug.owner}/${sl
     );
   }
   const asset = matchingAssets.shift()!;
-  const targetName = stripTargetTriple(asset.label!);
+
+  // Determine which field matched to use for stripping the target triple
+  let matchField: string;
+  if (typeof asset.label === "string" &&
+      (asset.label.endsWith(targetTriple) || asset.label.endsWith(targetDuple))) {
+    matchField = asset.label;
+  } else {
+    matchField = asset.name!;
+  }
+
+  const targetName = stripTargetTriple(matchField);
   return {
     binaryName: targetName,
     url: asset.url,
