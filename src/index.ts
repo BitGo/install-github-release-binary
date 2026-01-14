@@ -13,7 +13,7 @@ import {
   parseTargetReleases,
   parseToken,
 } from "./parse";
-import { getTargetTriple } from "./platform";
+import { getTargetTriple, getTargetDuple } from "./platform";
 import {
   fetchReleaseAssetMetadataFromTag,
   findExactSemanticVersionTag,
@@ -48,7 +48,10 @@ async function installGitHubReleaseBinary(
   token: string,
   ignoreExisting: boolean,
 ): Promise<void> {
-  const targetTriple = getTargetTriple(arch(), platform());
+  const currentArch = arch();
+  const currentPlatform = platform();
+  const targetTriple = getTargetTriple(currentArch, currentPlatform);
+  const targetDuple = getTargetDuple(currentArch, currentPlatform);
 
   const releaseTag = await findExactSemanticVersionTag(
     octokit,
@@ -60,8 +63,8 @@ async function installGitHubReleaseBinary(
     storageDirectory,
     targetRelease.slug,
     releaseTag,
-    platform(),
-    arch(),
+    currentPlatform,
+    currentArch,
   );
 
   const releaseAsset = await fetchReleaseAssetMetadataFromTag(
@@ -70,6 +73,7 @@ async function installGitHubReleaseBinary(
     targetRelease.binaryName,
     releaseTag,
     targetTriple,
+    targetDuple,
   );
 
   const destinationBasename = unwrapOrDefault(

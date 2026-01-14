@@ -32,6 +32,7 @@ export type RepositorySlug = {
 };
 
 export type TargetTriple = string & { readonly __tag: unique symbol };
+export type TargetDuple = string & { readonly __tag: unique symbol };
 export type BinaryName = string & { readonly __tag: unique symbol };
 
 export type TargetRelease = {

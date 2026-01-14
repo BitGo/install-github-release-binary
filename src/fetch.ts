@@ -1,6 +1,7 @@
 import type { Octokit } from "./octokit";
 import { isEqual, isSome, none, Option, some } from "./option";
 import { stripTargetTriple } from "./platform";
+import type { TargetDuple } from "./types";
 
 import {
   isExactSemanticVersion,
@@ -127,12 +128,90 @@ type ReleaseAssetMetadata = {
   url: string;
 };
 
+/**
+ * Type for GitHub release metadata required by our function
+ */
+export type ReleaseMetadataResponse = {
+  data: {
+    assets: Array<{
+      label?: string | null;
+      url: string;
+      // Other fields may exist but we don't use them
+    }>;
+  };
+};
+
+/**
+ * Extract matching asset metadata from release assets based on target platform format
+ */
+export function findMatchingReleaseAssetMetadata(
+  releaseMetadata: ReleaseMetadataResponse,
+  slug: RepositorySlug,
+  binaryName: Option<BinaryName>,
+  tag: ExactSemanticVersion,
+  targetTriple: TargetTriple,
+  targetDuple: TargetDuple,
+): ReleaseAssetMetadata {
+  // When the binary name is provided, look for matching binary with target triple or target duple
+  if (isSome(binaryName)) {
+    const targetLabelTraditional = `${binaryName.value}-${targetTriple}`;
+    const targetLabelDuple = `${binaryName.value}-${targetDuple}`;
+
+    const asset = releaseMetadata.data.assets.find(
+      (asset) =>
+        typeof asset.label === "string" &&
+        (asset.label === targetLabelTraditional || asset.label === targetLabelDuple),
+    );
+
+    if (asset === undefined) {
+      throw new Error(
+        `Expected to find asset in release ${slug.owner}/${slug.repository}@${tag} with label ${targetLabelTraditional} or ${targetLabelDuple}`,
+      );
+    }
+
+    return {
+      binaryName: binaryName,
+      url: asset.url,
+    };
+  }
+
+  // When the binary name is not provided, support these use cases:
+  // 1. There is only one binary uploaded to this release, a named binary.
+  // 2. There is an asset label matching the target triple or target duple.
+  // In both cases, we assume that's the binary the user meant.
+  // If there is ambiguity, exit with an error.
+  const matchingAssets = releaseMetadata.data.assets.filter(
+    (asset) =>
+      typeof asset.label === "string" &&
+      (asset.label.endsWith(targetTriple) || asset.label.endsWith(targetDuple)),
+  );
+  if (matchingAssets.length === 0) {
+    throw new Error(
+      `Expected to find asset in release ${slug.owner}/${slug.repository}@${tag} with label ending in ${targetTriple} or ${targetDuple}`,
+    );
+  }
+  if (matchingAssets.length > 1) {
+    throw new Error(
+      `Ambiguous targets: expected to find a single asset in release ${slug.owner}/${slug.repository}@${tag} matching target triple ${targetTriple} or target duple ${targetDuple}, but found ${matchingAssets.length}.
+
+To resolve, specify the desired binary with the target format ${slug.owner}/${slug.repository}/<binary-name>@${tag}`,
+    );
+  }
+  const asset = matchingAssets.shift()!;
+  const targetName = stripTargetTriple(asset.label!);
+  return {
+    binaryName: targetName,
+    url: asset.url,
+  };
+}
+
 export async function fetchReleaseAssetMetadataFromTag(
   octokit: Octokit,
   slug: RepositorySlug,
   binaryName: Option<BinaryName>,
   tag: ExactSemanticVersion,
   targetTriple: TargetTriple,
+  targetDuple: TargetDuple,
 ): Promise<ReleaseAssetMetadata> {
   // Maintainer's note: this impure function call makes this function difficult to test.
   const releaseMetadata = await octokit.rest.repos.getReleaseByTag({
@@ -141,48 +220,12 @@ export async function fetchReleaseAssetMetadataFromTag(
     tag,
   });
 
-  // When the binary name is provided, look for matching binary and target triple.
-  if (isSome(binaryName)) {
-    const targetLabel = `${binaryName.value}-${targetTriple}`;
-    const asset = releaseMetadata.data.assets.find(
-      (asset) => asset.label === targetLabel,
-    );
-    if (asset === undefined) {
-      throw new Error(
-        `Expected to find asset in release ${slug.owner}/${slug.repository}@${tag} with label ${targetLabel}`,
-      );
-    }
-    return {
-      binaryName: binaryName,
-      url: asset.url,
-    };
-  }
-
-  // When the binary name is not provided, support two use cases:
-  // 1. There is only one binary uploaded to this release, a named binary.
-  // 2. There is an asset label matching the target triple (with no binary name).
-  // In both cases, we assume that's the binary the user meant.
-  // If there is ambiguity, exit with an error.
-  const matchingTargetTriples = releaseMetadata.data.assets.filter(
-    (asset) =>
-      typeof asset.label === "string" && asset.label.endsWith(targetTriple),
+  return findMatchingReleaseAssetMetadata(
+    releaseMetadata,
+    slug,
+    binaryName,
+    tag,
+    targetTriple,
+    targetDuple,
   );
-  if (matchingTargetTriples.length === 0) {
-    throw new Error(
-      `Expected to find asset in release ${slug.owner}/${slug.repository}@${tag} with label ending in ${targetTriple}`,
-    );
-  }
-  if (matchingTargetTriples.length > 1) {
-    throw new Error(
-      `Ambiguous targets: expected to find a single asset in release ${slug.owner}/${slug.repository}@${tag} matching target triple ${targetTriple}, but found ${matchingTargetTriples.length}.
-
-To resolve, specify the desired binary with the target format ${slug.owner}/${slug.repository}/<binary-name>@${tag}`,
-    );
-  }
-  const asset = matchingTargetTriples.shift()!;
-  const targetName = stripTargetTriple(asset.label!);
-  return {
-    binaryName: targetName,
-    url: asset.url,
-  };
 }
