@@ -10000,6 +10000,12 @@ var ALL_TARGET_TRIPLES = [
   "x86_64-apple-darwin",
   "x86_64-unknown-linux-musl"
 ];
+var TARGET_DUPLES = [
+  "linux-amd64",
+  "linux-arm64",
+  "darwin-amd64",
+  "darwin-arm64"
+];
 function architectureLabel(arch2) {
   switch (arch2) {
     case "arm64":
@@ -10035,15 +10041,37 @@ function getTargetTriple(arch2, platform2) {
   const { vendor, operatingSystem } = platformLabel(platform2);
   return `${architecture}-${vendor}-${operatingSystem}`;
 }
+function getTargetDuple(arch2, platform2) {
+  switch (platform2) {
+    case "darwin":
+      return arch2 === "arm64" ? "darwin-arm64" : "darwin-amd64";
+    case "linux":
+      return arch2 === "arm64" ? "linux-arm64" : "linux-amd64";
+    default:
+      throw new Error(
+        `Unsupported platform ${platform2} for target duple conversion`
+      );
+  }
+}
 function stripTargetTriple(value) {
   if (ALL_TARGET_TRIPLES.find((targetTriple) => targetTriple === value)) {
     return none();
   }
-  const stripped = ALL_TARGET_TRIPLES.reduce(
+  const strippedTriple = ALL_TARGET_TRIPLES.reduce(
     (value2, targetTriple) => value2.replace(new RegExp(`-${targetTriple}$`), ""),
     value
   );
-  return some(stripped);
+  if (strippedTriple !== value) {
+    return some(strippedTriple);
+  }
+  const strippedDuple = TARGET_DUPLES.reduce(
+    (value2, duple) => value2.replace(new RegExp(`${duple}$`), ""),
+    value
+  );
+  if (strippedDuple !== value) {
+    return some(strippedDuple);
+  }
+  return some(value);
 }
 
 // src/types.ts
@@ -10111,20 +10139,21 @@ async function findExactSemanticVersionTag(octokit, slug, target) {
     `Expected to find an exact semantic version tag matching ${target} for ${slug.owner}/${slug.repository}`
   );
 }
-async function fetchReleaseAssetMetadataFromTag(octokit, slug, binaryName, tag, targetTriple) {
+async function fetchReleaseAssetMetadataFromTag(octokit, slug, binaryName, tag, targetTriple, targetDuple) {
   const releaseMetadata = await octokit.rest.repos.getReleaseByTag({
     owner: slug.owner,
     repo: slug.repository,
     tag
   });
   if (isSome(binaryName)) {
-    const targetLabel = `${binaryName.value}-${targetTriple}`;
+    const targetLabelTraditional = `${binaryName.value}-${targetTriple}`;
+    const targetLabelDuple = `${binaryName.value}-${targetDuple}`;
     const asset2 = releaseMetadata.data.assets.find(
-      (asset3) => asset3.label === targetLabel
+      (asset3) => typeof asset3.label === "string" && (asset3.label === targetLabelTraditional || asset3.label === targetLabelDuple)
     );
     if (asset2 === void 0) {
       throw new Error(
-        `Expected to find asset in release ${slug.owner}/${slug.repository}@${tag} with label ${targetLabel}`
+        `Expected to find asset in release ${slug.owner}/${slug.repository}@${tag} with label ${targetLabelTraditional} or ${targetLabelDuple}`
       );
     }
     return {
@@ -10132,22 +10161,22 @@ async function fetchReleaseAssetMetadataFromTag(octokit, slug, binaryName, tag, 
       url: asset2.url
     };
   }
-  const matchingTargetTriples = releaseMetadata.data.assets.filter(
-    (asset2) => typeof asset2.label === "string" && asset2.label.endsWith(targetTriple)
+  const matchingAssets = releaseMetadata.data.assets.filter(
+    (asset2) => typeof asset2.label === "string" && (asset2.label.endsWith(targetTriple) || asset2.label.endsWith(targetDuple))
   );
-  if (matchingTargetTriples.length === 0) {
+  if (matchingAssets.length === 0) {
     throw new Error(
-      `Expected to find asset in release ${slug.owner}/${slug.repository}@${tag} with label ending in ${targetTriple}`
+      `Expected to find asset in release ${slug.owner}/${slug.repository}@${tag} with label ending in ${targetTriple} or ${targetDuple}`
     );
   }
-  if (matchingTargetTriples.length > 1) {
+  if (matchingAssets.length > 1) {
     throw new Error(
-      `Ambiguous targets: expected to find a single asset in release ${slug.owner}/${slug.repository}@${tag} matching target triple ${targetTriple}, but found ${matchingTargetTriples.length}.
+      `Ambiguous targets: expected to find a single asset in release ${slug.owner}/${slug.repository}@${tag} matching target triple ${targetTriple} or target duple ${targetDuple}, but found ${matchingAssets.length}.
 
 To resolve, specify the desired binary with the target format ${slug.owner}/${slug.repository}/<binary-name>@${tag}`
     );
   }
-  const asset = matchingTargetTriples.shift();
+  const asset = matchingAssets.shift();
   const targetName = stripTargetTriple(asset.label);
   return {
     binaryName: targetName,
@@ -10166,7 +10195,10 @@ function getDestinationDirectory(storageDirectory, slug, tag, platform2, archite
   );
 }
 async function installGitHubReleaseBinary(octokit, targetRelease, storageDirectory, token, ignoreExisting) {
-  const targetTriple = getTargetTriple((0, import_node_os.arch)(), (0, import_node_os.platform)());
+  const currentArch = (0, import_node_os.arch)();
+  const currentPlatform = (0, import_node_os.platform)();
+  const targetTriple = getTargetTriple(currentArch, currentPlatform);
+  const targetDuple = getTargetDuple(currentArch, currentPlatform);
   const releaseTag = await findExactSemanticVersionTag(
     octokit,
     targetRelease.slug,
@@ -10176,15 +10208,16 @@ async function installGitHubReleaseBinary(octokit, targetRelease, storageDirecto
     storageDirectory,
     targetRelease.slug,
     releaseTag,
-    (0, import_node_os.platform)(),
-    (0, import_node_os.arch)()
+    currentPlatform,
+    currentArch
   );
   const releaseAsset = await fetchReleaseAssetMetadataFromTag(
     octokit,
     targetRelease.slug,
     targetRelease.binaryName,
     releaseTag,
-    targetTriple
+    targetTriple,
+    targetDuple
   );
   const destinationBasename = unwrapOrDefault(
     releaseAsset.binaryName,
