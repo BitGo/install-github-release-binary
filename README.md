@@ -1,8 +1,8 @@
 # install-github-release-binary
 
-[![Build Status]](https://github.com/EricCrosson/install-github-release-binary/actions/workflows/release.yml)
+[![Build Status]](https://github.com/BitGo/install-github-release-binary/actions/workflows/release.yml)
 
-[build status]: https://github.com/EricCrosson/install-github-release-binary/actions/workflows/release.yml/badge.svg?event=push
+[build status]: https://github.com/BitGo/install-github-release-binary/actions/workflows/release.yml/badge.svg?event=push
 
 **install-github-release-binary** is an opinionated GitHub Action for adding a binary from a GitHub Release to your CI `$PATH`.
 
@@ -18,7 +18,6 @@ This action only supports installing from releases where the release:
 
 - is tagged with the full `{major}.{minor}.{patch}` semantic version
 - contains raw binary assets (archives not supported)
-- assets are labeled with the binary name and [target triple] in the format `<binary name>-<target triple>`
 
 You can create compatible releases with [semantic-release], using a workflow like [semantic-release-action/rust].
 
@@ -32,35 +31,45 @@ Use this action in a step:
 
 ```yaml
 - name: Install flux-capacitor
-  uses: EricCrosson/install-github-release-binary@v2
+  uses: BitGo/install-github-release-binary@v2
   with:
-    targets: EricCrosson/flux-capacitor@v1
+    targets: BitGo/flux-capacitor@v1
 ```
 
 > [!NOTE]
 > I recommend adding an explicit step name, otherwise the step will only reference
-> `EricCrosson/install-github-release-binary@v2`, not your targets.
+> `BitGo/install-github-release-binary@v2`, not your targets.
 
 Install multiple binaries:
 
 ```yaml
 - name: Install future tools
-  uses: EricCrosson/install-github-release-binary@v2
+  uses: BitGo/install-github-release-binary@v2
   with:
     targets: |
-      EricCrosson/flux-capacitor@v1
-      EricCrosson/steam-locomotive@v7.5.3
-      EricCrosson/hoverboard@11.7.3:sha256-8a4600be96d2ec013209042458ce97a9652fcc46c1c855d0217aa42e330fc06e
+      BitGo/flux-capacitor@v1
+      BitGo/steam-locomotive@v7.5.3
+      BitGo/hoverboard@11.7.3:sha256-8a4600be96d2ec013209042458ce97a9652fcc46c1c855d0217aa42e330fc06e
 ```
 
 Install a binary from a release with multiple binaries available:
 
 ```yaml
 - name: Install flux-capacitor
-  uses: EricCrosson/install-github-release-binary@v2
+  uses: BitGo/install-github-release-binary@v2
   with:
     targets: |
-      EricCrosson/future-tools/flux-capacitor@v1
+      BitGo/future-tools/flux-capacitor@v1
+```
+
+Install a specific binary with checksum validation:
+
+```yaml
+- name: Install argocd CLI
+  uses: BitGo/install-github-release-binary@v2
+  with:
+    targets: |
+      argoproj/argo-cd/argocd-linux-amd64@v3.1.4:sha256-7def0aa3cc9ebcd6acdddc27244e7ea4de448d872a9ab0cf6cab4b1e653841a6
 ```
 
 ## Inputs
@@ -82,11 +91,11 @@ Optionally, include:
 
 Examples:
 
-- `EricCrosson/flux-capacitor@v1`
-- `EricCrosson/flux-capacitor@v1.2`
-- `EricCrosson/flux-capacitor@v1.2.3`
-- `EricCrosson/flux-capacitor@v1.2.3:sha256-ad91159c656d427ad8fe5ded2946f29f3a612c6b7a4af6129e9aa85256b7299e`
-- `EricCrosson/future-tools/flux-capacitor@v1`
+- `BitGo/flux-capacitor@v1`
+- `BitGo/flux-capacitor@v1.2`
+- `BitGo/flux-capacitor@v1.2.3`
+- `BitGo/flux-capacitor@v1.2.3:sha256-ad91159c656d427ad8fe5ded2946f29f3a612c6b7a4af6129e9aa85256b7299e`
+- `BitGo/future-tools/flux-capacitor@v1`
 
 [semantic version number]: https://semver.org/
 

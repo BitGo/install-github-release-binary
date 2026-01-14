@@ -144,12 +144,22 @@ export async function fetchReleaseAssetMetadataFromTag(
   // When the binary name is provided, look for matching binary and target triple.
   if (isSome(binaryName)) {
     const targetLabel = `${binaryName.value}-${targetTriple}`;
-    const asset = releaseMetadata.data.assets.find(
+
+    // First try to find asset by label (original behavior)
+    let asset = releaseMetadata.data.assets.find(
       (asset) => asset.label === targetLabel,
     );
+
+    // If not found by label, try to find asset by exact name match
+    if (asset === undefined) {
+      asset = releaseMetadata.data.assets.find(
+        (asset) => asset.name === binaryName.value,
+      );
+    }
+
     if (asset === undefined) {
       throw new Error(
-        `Expected to find asset in release ${slug.owner}/${slug.repository}@${tag} with label ${targetLabel}`,
+        `Expected to find asset in release ${slug.owner}/${slug.repository}@${tag} with label ${targetLabel} or name ${binaryName.value}`,
       );
     }
     return {
@@ -160,7 +170,7 @@ export async function fetchReleaseAssetMetadataFromTag(
 
   // When the binary name is not provided, support two use cases:
   // 1. There is only one binary uploaded to this release, a named binary.
-  // 2. There is an asset label matching the target triple (with no binary name).
+  // 2. There is an asset label or name matching the target triple (with no binary name).
   // In both cases, we assume that's the binary the user meant.
   // If there is ambiguity, exit with an error.
   const matchingTargetTriples = releaseMetadata.data.assets.filter(

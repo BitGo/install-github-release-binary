@@ -10119,12 +10119,17 @@ async function fetchReleaseAssetMetadataFromTag(octokit, slug, binaryName, tag, 
   });
   if (isSome(binaryName)) {
     const targetLabel = `${binaryName.value}-${targetTriple}`;
-    const asset2 = releaseMetadata.data.assets.find(
+    let asset2 = releaseMetadata.data.assets.find(
       (asset3) => asset3.label === targetLabel
     );
     if (asset2 === void 0) {
+      asset2 = releaseMetadata.data.assets.find(
+        (asset3) => asset3.name === binaryName.value
+      );
+    }
+    if (asset2 === void 0) {
       throw new Error(
-        `Expected to find asset in release ${slug.owner}/${slug.repository}@${tag} with label ${targetLabel}`
+        `Expected to find asset in release ${slug.owner}/${slug.repository}@${tag} with label ${targetLabel} or name ${binaryName.value}`
       );
     }
     return {
