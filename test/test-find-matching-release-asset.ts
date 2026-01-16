@@ -6,7 +6,7 @@ import { findMatchingReleaseAssetMetadata } from "../src/fetch";
 import type { ExactSemanticVersion, RepositorySlug, BinaryName, TargetTriple, TargetDuple } from "../src/types";
 
 // Mocked releaseMetadata for tests
-function mockReleaseMetadata(assets: Array<{ label?: string; url: string }>) {
+function mockReleaseMetadata(assets: Array<{ label?: string; name?: string; url: string }>) {
   return {
     data: { assets }
   };
@@ -89,7 +89,7 @@ test("should throw error when binary name provided but no matching asset found",
       targetTriple,
       targetDuple
     );
-  }, new Error(`Expected to find asset in release testowner/testrepo@v1.0.0 with label testbin-aarch64-apple-darwin or testbin-darwin-arm64`));
+  }, new Error(`Expected to find asset in release testowner/testrepo@v1.0.0 with label or name testbin-aarch64-apple-darwin or testbin-darwin-arm64`));
 });
 
 // Test without binary name
@@ -147,7 +147,7 @@ test("should throw error when no binary name provided and no matching asset foun
       targetTriple,
       targetDuple
     );
-  }, new Error(`Expected to find asset in release testowner/testrepo@v1.0.0 with label ending in aarch64-apple-darwin or darwin-arm64`));
+  }, new Error(`Expected to find asset in release testowner/testrepo@v1.0.0 with label or name ending in aarch64-apple-darwin or darwin-arm64`));
 });
 
 test("should throw error when multiple assets match without binary name", () => {
@@ -226,5 +226,92 @@ test("should find x86_64 asset with binary name using target duple", () => {
   assert.deepEqual(result, {
     binaryName,
     url: "https://example.com/testbin-x86-duple"
+  });
+});
+
+// Tests for the new feature: finding assets by name property
+test("should find asset with binary name using name property with target triple", () => {
+  const binaryName = some("testbin" as unknown as BinaryName);
+  const mockAssets = [
+    // No label property, only name property
+    { name: "testbin-aarch64-apple-darwin", url: "https://example.com/testbin-triple" },
+  ];
+
+  const result = findMatchingReleaseAssetMetadata(
+    mockReleaseMetadata(mockAssets),
+    mockSlug,
+    binaryName,
+    mockTag,
+    targetTriple,
+    targetDuple
+  );
+
+  assert.deepEqual(result, {
+    binaryName,
+    url: "https://example.com/testbin-triple"
+  });
+});
+
+test("should find asset with binary name using name property with target duple", () => {
+  const binaryName = some("testbin" as unknown as BinaryName);
+  const mockAssets = [
+    // No label property, only name property
+    { name: "testbin-darwin-arm64", url: "https://example.com/testbin-duple" },
+  ];
+
+  const result = findMatchingReleaseAssetMetadata(
+    mockReleaseMetadata(mockAssets),
+    mockSlug,
+    binaryName,
+    mockTag,
+    targetTriple,
+    targetDuple
+  );
+
+  assert.deepEqual(result, {
+    binaryName,
+    url: "https://example.com/testbin-duple"
+  });
+});
+
+test("should find asset without binary name using name property with target triple", () => {
+  const mockAssets = [
+    // No label property, only name property
+    { name: "somebin-aarch64-apple-darwin", url: "https://example.com/somebin-triple" },
+  ];
+
+  const result = findMatchingReleaseAssetMetadata(
+    mockReleaseMetadata(mockAssets),
+    mockSlug,
+    none(),
+    mockTag,
+    targetTriple,
+    targetDuple
+  );
+
+  assert.deepEqual(result, {
+    binaryName: some("somebin"),
+    url: "https://example.com/somebin-triple"
+  });
+});
+
+test("should find asset without binary name using name property with target duple", () => {
+  const mockAssets = [
+    // No label property, only name property
+    { name: "somebin-darwin-arm64", url: "https://example.com/somebin-duple" },
+  ];
+
+  const result = findMatchingReleaseAssetMetadata(
+    mockReleaseMetadata(mockAssets),
+    mockSlug,
+    none(),
+    mockTag,
+    targetTriple,
+    targetDuple
+  );
+
+  assert.deepEqual(result, {
+    binaryName: some("somebin"),
+    url: "https://example.com/somebin-duple"
   });
 });
