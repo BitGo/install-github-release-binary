@@ -47,7 +47,8 @@ test("should find asset with binary name using target triple", () => {
 
   assert.deepEqual(result, {
     binaryName,
-    url: "https://example.com/testbin-triple"
+    url: "https://example.com/testbin-triple",
+    name: ''
   });
 });
 
@@ -69,7 +70,8 @@ test("should find asset with binary name using target duple", () => {
 
   assert.deepEqual(result, {
     binaryName,
-    url: "https://example.com/testbin-duple"
+    url: "https://example.com/testbin-duple",
+    name: ''
   });
 });
 
@@ -109,7 +111,8 @@ test("should find asset without binary name using target triple", () => {
 
   assert.deepEqual(result, {
     binaryName: some("somebin"),
-    url: "https://example.com/somebin-triple"
+    url: "https://example.com/somebin-triple",
+    name: ''
   });
 });
 
@@ -129,7 +132,8 @@ test("should find asset without binary name using target duple", () => {
 
   assert.deepEqual(result, {
     binaryName: some("somebin"),
-    url: "https://example.com/somebin-duple"
+    url: "https://example.com/somebin-duple",
+    name: ''
   });
 });
 
@@ -204,7 +208,8 @@ test("should find x86_64 asset with binary name using target triple", () => {
 
   assert.deepEqual(result, {
     binaryName,
-    url: "https://example.com/testbin-x86-triple"
+    url: "https://example.com/testbin-x86-triple",
+    name: ''
   });
 });
 
@@ -225,7 +230,8 @@ test("should find x86_64 asset with binary name using target duple", () => {
 
   assert.deepEqual(result, {
     binaryName,
-    url: "https://example.com/testbin-x86-duple"
+    url: "https://example.com/testbin-x86-duple",
+    name: ''
   });
 });
 
@@ -248,7 +254,8 @@ test("should find asset with binary name using name property with target triple"
 
   assert.deepEqual(result, {
     binaryName,
-    url: "https://example.com/testbin-triple"
+    url: "https://example.com/testbin-triple",
+    name: 'testbin-aarch64-apple-darwin'
   });
 });
 
@@ -270,7 +277,8 @@ test("should find asset with binary name using name property with target duple",
 
   assert.deepEqual(result, {
     binaryName,
-    url: "https://example.com/testbin-duple"
+    url: "https://example.com/testbin-duple",
+    name: 'testbin-darwin-arm64'
   });
 });
 
@@ -291,7 +299,8 @@ test("should find asset without binary name using name property with target trip
 
   assert.deepEqual(result, {
     binaryName: some("somebin"),
-    url: "https://example.com/somebin-triple"
+    url: "https://example.com/somebin-triple",
+    name: 'somebin-aarch64-apple-darwin'
   });
 });
 
@@ -312,6 +321,7 @@ test("should find asset without binary name using name property with target dupl
 
   assert.deepEqual(result, {
     binaryName: some("somebin"),
-    url: "https://example.com/somebin-duple"
+    url: "https://example.com/somebin-duple",
+    name: 'somebin-darwin-arm64'
   });
 });

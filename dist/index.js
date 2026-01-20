@@ -4747,7 +4747,7 @@ var require_tool_cache = __commonJS({
       });
     }
     exports2.extractXar = extractXar;
-    function extractZip(file, dest) {
+    function extractZip2(file, dest) {
       return __awaiter(this, void 0, void 0, function* () {
         if (!file) {
           throw new Error("parameter 'file' is required");
@@ -4761,7 +4761,7 @@ var require_tool_cache = __commonJS({
         return dest;
       });
     }
-    exports2.extractZip = extractZip;
+    exports2.extractZip = extractZip2;
     function extractZipWin(file, dest) {
       return __awaiter(this, void 0, void 0, function* () {
         const escapedFile = file.replace(/'/g, "''").replace(/"|\n|\r/g, "");
@@ -10001,10 +10001,16 @@ var ALL_TARGET_TRIPLES = [
   "x86_64-unknown-linux-musl"
 ];
 var TARGET_DUPLES = [
+  // Hyphenated versions
   "linux-amd64",
   "linux-arm64",
   "darwin-amd64",
-  "darwin-arm64"
+  "darwin-arm64",
+  // Underscore versions
+  "linux_amd64",
+  "linux_arm64",
+  "darwin_amd64",
+  "darwin_arm64"
 ];
 function architectureLabel(arch2) {
   switch (arch2) {
@@ -10053,6 +10059,18 @@ function getTargetDuple(arch2, platform2) {
       );
   }
 }
+function getTargetDupleUnderscore(arch2, platform2) {
+  switch (platform2) {
+    case "darwin":
+      return arch2 === "arm64" ? "darwin_arm64" : "darwin_amd64";
+    case "linux":
+      return arch2 === "arm64" ? "linux_arm64" : "linux_amd64";
+    default:
+      throw new Error(
+        `Unsupported platform ${platform2} for target duple conversion`
+      );
+  }
+}
 function stripTargetTriple(value) {
   if (ALL_TARGET_TRIPLES.find((targetTriple) => targetTriple === value)) {
     return none();
@@ -10068,7 +10086,10 @@ function stripTargetTriple(value) {
     return some(strippedTriple);
   }
   const strippedDuple = TARGET_DUPLES.reduce(
-    (value2, duple) => value2.replace(new RegExp(`-${duple}$`), ""),
+    (value2, duple) => {
+      const pattern = new RegExp(`[-_]${duple}$`);
+      return value2.replace(pattern, "");
+    },
     value
   );
   if (strippedDuple !== value) {
@@ -10142,54 +10163,75 @@ async function findExactSemanticVersionTag(octokit, slug, target) {
     `Expected to find an exact semantic version tag matching ${target} for ${slug.owner}/${slug.repository}`
   );
 }
-function findMatchingReleaseAssetMetadata(releaseMetadata, slug, binaryName, tag, targetTriple, targetDuple) {
+function findMatchingReleaseAssetMetadata(releaseMetadata, slug, binaryName, tag, targetTriple, targetDuple, targetDupleUnderscore) {
   if (isSome(binaryName)) {
     const targetLabelTraditional = `${binaryName.value}-${targetTriple}`;
     const targetLabelDuple = `${binaryName.value}-${targetDuple}`;
+    const targetLabelDupleUnderscore = targetDupleUnderscore ? `${binaryName.value}_${targetDupleUnderscore}` : "";
     const asset2 = releaseMetadata.data.assets.find((asset3) => {
       if (typeof asset3.label === "string") {
-        if (asset3.label === targetLabelTraditional || asset3.label === targetLabelDuple) {
+        if (asset3.label === targetLabelTraditional || asset3.label === targetLabelDuple || targetLabelDupleUnderscore && asset3.label === targetLabelDupleUnderscore) {
           return true;
         }
       }
       if (typeof asset3.name === "string") {
-        if (asset3.name === targetLabelTraditional || asset3.name === targetLabelDuple) {
+        if (asset3.name === targetLabelTraditional || asset3.name === targetLabelDuple || targetLabelDupleUnderscore && asset3.name === targetLabelDupleUnderscore) {
           return true;
         }
       }
       return false;
     });
     if (asset2 === void 0) {
+      const formats = [targetLabelTraditional, targetLabelDuple];
+      if (targetDupleUnderscore) {
+        formats.push(targetLabelDupleUnderscore);
+      }
       throw new Error(
-        `Expected to find asset in release ${slug.owner}/${slug.repository}@${tag} with label or name ${targetLabelTraditional} or ${targetLabelDuple}`
+        `Expected to find asset in release ${slug.owner}/${slug.repository}@${tag} with label or name ${formats.join(" or ")}`
       );
     }
     return {
       binaryName,
-      url: asset2.url
+      url: asset2.url,
+      name: asset2.name || ""
     };
   }
   const matchingAssets = releaseMetadata.data.assets.filter((asset2) => {
+    const endsWithPlatform = (name) => {
+      const filenameWithoutExt = name.replace(/\.[^.]+$/, "");
+      return (
+        // Traditional formats with platform at the end
+        filenameWithoutExt.endsWith(targetTriple) || filenameWithoutExt.endsWith(targetDuple) || targetDupleUnderscore && filenameWithoutExt.endsWith(targetDupleUnderscore)
+      );
+    };
     if (typeof asset2.label === "string") {
-      if (asset2.label.endsWith(targetTriple) || asset2.label.endsWith(targetDuple)) {
+      if (endsWithPlatform(asset2.label)) {
         return true;
       }
     }
     if (typeof asset2.name === "string") {
-      if (asset2.name.endsWith(targetTriple) || asset2.name.endsWith(targetDuple)) {
+      if (endsWithPlatform(asset2.name)) {
         return true;
       }
     }
     return false;
   });
   if (matchingAssets.length === 0) {
+    const formats = [targetTriple, targetDuple];
+    if (targetDupleUnderscore) {
+      formats.push(targetDupleUnderscore);
+    }
     throw new Error(
-      `Expected to find asset in release ${slug.owner}/${slug.repository}@${tag} with label or name ending in ${targetTriple} or ${targetDuple}`
+      `Expected to find asset in release ${slug.owner}/${slug.repository}@${tag} with label or name containing platform identifier ${formats.join(" or ")} at the end of the filename (before the extension)`
     );
   }
   if (matchingAssets.length > 1) {
+    const formats = [targetTriple, targetDuple];
+    if (targetDupleUnderscore) {
+      formats.push(targetDupleUnderscore);
+    }
     throw new Error(
-      `Ambiguous targets: expected to find a single asset in release ${slug.owner}/${slug.repository}@${tag} matching target triple ${targetTriple} or target duple ${targetDuple}, but found ${matchingAssets.length}.
+      `Ambiguous targets: expected to find a single asset in release ${slug.owner}/${slug.repository}@${tag} containing platform identifier ${formats.join(" or ")} at the end of the filename (before the extension), but found ${matchingAssets.length}.
 
 To resolve, specify the desired binary with the target format ${slug.owner}/${slug.repository}/<binary-name>@${tag}`
     );
@@ -10204,10 +10246,11 @@ To resolve, specify the desired binary with the target format ${slug.owner}/${sl
   const targetName = stripTargetTriple(matchField);
   return {
     binaryName: targetName,
-    url: asset.url
+    url: asset.url,
+    name: asset.name || ""
   };
 }
-async function fetchReleaseAssetMetadataFromTag(octokit, slug, binaryName, tag, targetTriple, targetDuple) {
+async function fetchReleaseAssetMetadataFromTag(octokit, slug, binaryName, tag, targetTriple, targetDuple, targetDupleUnderscore) {
   const releaseMetadata = await octokit.rest.repos.getReleaseByTag({
     owner: slug.owner,
     repo: slug.repository,
@@ -10219,11 +10262,15 @@ async function fetchReleaseAssetMetadataFromTag(octokit, slug, binaryName, tag, 
     binaryName,
     tag,
     targetTriple,
-    targetDuple
+    targetDuple,
+    targetDupleUnderscore
   );
 }
 
 // src/index.ts
+function isZipFile(filename) {
+  return filename.toLowerCase().endsWith(".zip");
+}
 function getDestinationDirectory(storageDirectory, slug, tag, platform2, architecture) {
   return path.join(
     storageDirectory,
@@ -10238,6 +10285,7 @@ async function installGitHubReleaseBinary(octokit, targetRelease, storageDirecto
   const currentPlatform = (0, import_node_os.platform)();
   const targetTriple = getTargetTriple(currentArch, currentPlatform);
   const targetDuple = getTargetDuple(currentArch, currentPlatform);
+  const targetDupleUnderscore = getTargetDupleUnderscore(currentArch, currentPlatform);
   const releaseTag = await findExactSemanticVersionTag(
     octokit,
     targetRelease.slug,
@@ -10256,32 +10304,34 @@ async function installGitHubReleaseBinary(octokit, targetRelease, storageDirecto
     targetRelease.binaryName,
     releaseTag,
     targetTriple,
-    targetDuple
+    targetDuple,
+    targetDupleUnderscore
   );
   const destinationBasename = unwrapOrDefault(
     releaseAsset.binaryName,
     targetRelease.slug.repository
   );
-  const destinationFilename = path.join(
-    destinationDirectory,
-    destinationBasename
-  );
   fs.mkdirSync(destinationDirectory, { recursive: true });
-  if (fs.existsSync(destinationFilename)) {
+  const assetName = releaseAsset.name || "";
+  core2.debug(`Asset name: ${assetName}`);
+  const isZip = isZipFile(assetName);
+  const destinationFilename = isZip ? path.join(destinationDirectory, `${destinationBasename}.zip`) : path.join(destinationDirectory, destinationBasename);
+  const finalBinaryPath = path.join(destinationDirectory, destinationBasename);
+  if (fs.existsSync(finalBinaryPath)) {
     if (ignoreExisting) {
-      core2.info(`Binary already exists at ${destinationFilename}, ignoring and leaving system as-is`);
+      core2.info(`Binary already exists at ${finalBinaryPath}, ignoring and leaving system as-is`);
       core2.addPath(destinationDirectory);
       return;
     }
   }
-  await tc.downloadTool(
+  const downloadedFilePath = await tc.downloadTool(
     releaseAsset.url,
     destinationFilename,
     `token ${token}`,
     { accept: "application/octet-stream" }
   );
   if (isSome(targetRelease.checksum)) {
-    const fileBuffer = fs.readFileSync(destinationFilename);
+    const fileBuffer = fs.readFileSync(downloadedFilePath);
     const hash = (0, import_node_crypto.createHash)("sha256");
     hash.update(fileBuffer);
     const calculatedChecksum = hash.digest("hex");
@@ -10298,7 +10348,34 @@ async function installGitHubReleaseBinary(octokit, targetRelease, storageDirecto
       );
     }
   }
-  fs.chmodSync(destinationFilename, "755");
+  if (isZip) {
+    core2.info(`Detected zip archive based on filename: ${assetName}`);
+    core2.info(`Extracting zip file: ${downloadedFilePath}`);
+    const extractedDirectory = await tc.extractZip(downloadedFilePath, destinationDirectory);
+    core2.debug(`Files extracted to ${extractedDirectory}`);
+    const extractedFiles = fs.readdirSync(extractedDirectory);
+    const visibleFiles = extractedFiles.filter(
+      (file) => !file.startsWith(".") && !fs.statSync(path.join(extractedDirectory, file)).isDirectory()
+    );
+    if (visibleFiles.length !== 1) {
+      throw new Error(`Expected exactly one binary in the zip archive, but found ${visibleFiles.length} files: ${visibleFiles.join(", ")}`);
+    }
+    const binaryName = visibleFiles[0];
+    core2.debug(`Found single binary in zip: ${binaryName}`);
+    fs.renameSync(
+      path.join(extractedDirectory, binaryName),
+      finalBinaryPath
+    );
+    if (extractedDirectory !== destinationDirectory) {
+      core2.debug(`Removing temporary extraction directory: ${extractedDirectory}`);
+      fs.rmSync(extractedDirectory, { recursive: true, force: true });
+    }
+    core2.debug(`Removing zip file: ${downloadedFilePath}`);
+    fs.unlinkSync(downloadedFilePath);
+  } else {
+    core2.debug(`Downloaded binary file: ${downloadedFilePath}`);
+  }
+  fs.chmodSync(finalBinaryPath, "755");
   core2.addPath(destinationDirectory);
 }
 async function main() {

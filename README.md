@@ -17,8 +17,9 @@ The primary goals are, in order of priority:
 This action only supports installing from releases where the release:
 
 - is tagged with the full `{major}.{minor}.{patch}` semantic version
-- contains raw binary assets (archives not supported)
+- contains raw binary assets or zip archives (zip archives must contain exactly one binary file)
 - assets are labeled with the binary name and [target triple] in the format `<binary name>-<target triple>`
+  - also supports assets labeled with underscore format: `<binary name>_<platform>_<arch>` (e.g., `fossa_linux_amd64`)
 
 You can create compatible releases with [semantic-release], using a workflow like [semantic-release-action/rust].
 
@@ -61,6 +62,16 @@ Install a binary from a release with multiple binaries available:
   with:
     targets: |
       EricCrosson/future-tools/flux-capacitor@v1
+```
+
+Install a binary from a zip archive (the zip must contain exactly one binary file):
+
+```yaml
+- name: Install FOSSA CLI
+  uses: EricCrosson/install-github-release-binary@v2
+  with:
+    targets: |
+      fossas/fossa-cli@v3.11.7:sha256-d6f73d3da1cc7727610dd3f2c1a6021aeb23516f74b6f031e91deb31eba34f2b
 ```
 
 ## Inputs

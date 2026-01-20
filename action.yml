@@ -1,6 +1,6 @@
 ---
 name: Install GitHub Release binary
-description: Install a binary from a GitHub Release
+description: Install a binary from a GitHub Release (supports both direct binaries and zip archives)
 author: Eric Crosson
 branding:
   icon: arrow-down

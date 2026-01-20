@@ -126,6 +126,7 @@ export async function findExactSemanticVersionTag(
 type ReleaseAssetMetadata = {
   binaryName: Option<string>;
   url: string;
+  name?: string;
 };
 
 /**
@@ -152,23 +153,33 @@ export function findMatchingReleaseAssetMetadata(
   tag: ExactSemanticVersion,
   targetTriple: TargetTriple,
   targetDuple: TargetDuple,
+  targetDupleUnderscore?: TargetDuple,
 ): ReleaseAssetMetadata {
   // When the binary name is provided, look for matching binary with target triple or target duple
   if (isSome(binaryName)) {
+    // Standard hyphen format for target triple and duple
     const targetLabelTraditional = `${binaryName.value}-${targetTriple}`;
     const targetLabelDuple = `${binaryName.value}-${targetDuple}`;
+
+    // Underscore format for target duple (if provided)
+    const targetLabelDupleUnderscore = targetDupleUnderscore ?
+      `${binaryName.value}_${targetDupleUnderscore}` : '';
 
     const asset = releaseMetadata.data.assets.find((asset) => {
       // Check for label match
       if (typeof asset.label === "string") {
-        if (asset.label === targetLabelTraditional || asset.label === targetLabelDuple) {
+        if (asset.label === targetLabelTraditional ||
+            asset.label === targetLabelDuple ||
+            (targetLabelDupleUnderscore && asset.label === targetLabelDupleUnderscore)) {
           return true;
         }
       }
 
       // Check for name match
       if (typeof asset.name === "string") {
-        if (asset.name === targetLabelTraditional || asset.name === targetLabelDuple) {
+        if (asset.name === targetLabelTraditional ||
+            asset.name === targetLabelDuple ||
+            (targetLabelDupleUnderscore && asset.name === targetLabelDupleUnderscore)) {
           return true;
         }
       }
@@ -177,14 +188,19 @@ export function findMatchingReleaseAssetMetadata(
     });
 
     if (asset === undefined) {
+      const formats = [targetLabelTraditional, targetLabelDuple];
+      if (targetDupleUnderscore) {
+        formats.push(targetLabelDupleUnderscore);
+      }
       throw new Error(
-        `Expected to find asset in release ${slug.owner}/${slug.repository}@${tag} with label or name ${targetLabelTraditional} or ${targetLabelDuple}`,
+        `Expected to find asset in release ${slug.owner}/${slug.repository}@${tag} with label or name ${formats.join(" or ")}`,
       );
     }
 
     return {
       binaryName: binaryName,
       url: asset.url,
+      name: asset.name || '',
     };
   }
 
@@ -194,16 +210,29 @@ export function findMatchingReleaseAssetMetadata(
   // In both cases, we assume that's the binary the user meant.
   // If there is ambiguity, exit with an error.
   const matchingAssets = releaseMetadata.data.assets.filter((asset) => {
+    // Helper function to check if a name contains the platform identifier at the end
+    const endsWithPlatform = (name: string) => {
+      // Get just the filename part without the extension
+      const filenameWithoutExt = name.replace(/\.[^.]+$/, '');
+
+      return (
+        // Traditional formats with platform at the end
+        filenameWithoutExt.endsWith(targetTriple) ||
+        filenameWithoutExt.endsWith(targetDuple) ||
+        (targetDupleUnderscore && filenameWithoutExt.endsWith(targetDupleUnderscore))
+      );
+    };
+
     // Check label match
     if (typeof asset.label === "string") {
-      if (asset.label.endsWith(targetTriple) || asset.label.endsWith(targetDuple)) {
+      if (endsWithPlatform(asset.label)) {
         return true;
       }
     }
 
     // Check name match
     if (typeof asset.name === "string") {
-      if (asset.name.endsWith(targetTriple) || asset.name.endsWith(targetDuple)) {
+      if (endsWithPlatform(asset.name)) {
         return true;
       }
     }
@@ -211,13 +240,21 @@ export function findMatchingReleaseAssetMetadata(
     return false;
   });
   if (matchingAssets.length === 0) {
+    const formats = [targetTriple, targetDuple];
+    if (targetDupleUnderscore) {
+      formats.push(targetDupleUnderscore);
+    }
     throw new Error(
-      `Expected to find asset in release ${slug.owner}/${slug.repository}@${tag} with label or name ending in ${targetTriple} or ${targetDuple}`,
+      `Expected to find asset in release ${slug.owner}/${slug.repository}@${tag} with label or name containing platform identifier ${formats.join(" or ")} at the end of the filename (before the extension)`,
     );
   }
   if (matchingAssets.length > 1) {
+    const formats = [targetTriple, targetDuple];
+    if (targetDupleUnderscore) {
+      formats.push(targetDupleUnderscore);
+    }
     throw new Error(
-      `Ambiguous targets: expected to find a single asset in release ${slug.owner}/${slug.repository}@${tag} matching target triple ${targetTriple} or target duple ${targetDuple}, but found ${matchingAssets.length}.
+      `Ambiguous targets: expected to find a single asset in release ${slug.owner}/${slug.repository}@${tag} containing platform identifier ${formats.join(" or ")} at the end of the filename (before the extension), but found ${matchingAssets.length}.
 
 To resolve, specify the desired binary with the target format ${slug.owner}/${slug.repository}/<binary-name>@${tag}`,
     );
@@ -237,6 +274,7 @@ To resolve, specify the desired binary with the target format ${slug.owner}/${sl
   return {
     binaryName: targetName,
     url: asset.url,
+    name: asset.name || '',
   };
 }
 
@@ -247,6 +285,7 @@ export async function fetchReleaseAssetMetadataFromTag(
   tag: ExactSemanticVersion,
   targetTriple: TargetTriple,
   targetDuple: TargetDuple,
+  targetDupleUnderscore?: TargetDuple,
 ): Promise<ReleaseAssetMetadata> {
   // Maintainer's note: this impure function call makes this function difficult to test.
   const releaseMetadata = await octokit.rest.repos.getReleaseByTag({
@@ -262,5 +301,6 @@ export async function fetchReleaseAssetMetadataFromTag(
     tag,
     targetTriple,
     targetDuple,
+    targetDupleUnderscore,
   );
 }

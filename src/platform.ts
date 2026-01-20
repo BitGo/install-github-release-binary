@@ -9,11 +9,18 @@ const ALL_TARGET_TRIPLES: readonly TargetTriple[] = [
 ] as unknown as readonly TargetTriple[];
 
 // Target duples (Go format OS-architecture combinations)
+// Both hyphenated and underscore versions are included for compatibility
 export const TARGET_DUPLES: readonly TargetDuple[] = [
+  // Hyphenated versions
   "linux-amd64",
   "linux-arm64",
   "darwin-amd64",
   "darwin-arm64",
+  // Underscore versions
+  "linux_amd64",
+  "linux_arm64",
+  "darwin_amd64",
+  "darwin_arm64",
 ] as unknown as readonly TargetDuple[];
 
 function architectureLabel(arch: string): string {
@@ -62,17 +69,38 @@ export function getTargetTriple(
 }
 
 /**
- * Get the target duple (e.g. "linux-amd64") for the given architecture and platform
+ * Get the target duples (e.g. "linux-amd64" and "linux_amd64") for the given architecture and platform
  */
 export function getTargetDuple(
   arch: string,
   platform: NodeJS.Platform,
 ): TargetDuple {
+  // Return the hyphenated version as primary
   switch (platform) {
     case "darwin":
       return arch === "arm64" ? "darwin-arm64" as TargetDuple : "darwin-amd64" as TargetDuple;
     case "linux":
       return arch === "arm64" ? "linux-arm64" as TargetDuple : "linux-amd64" as TargetDuple;
+    default:
+      throw new Error(
+        `Unsupported platform ${platform} for target duple conversion`,
+      );
+  }
+}
+
+/**
+ * Get the underscore version of target duple (e.g. "linux_amd64") for the given architecture and platform
+ */
+export function getTargetDupleUnderscore(
+  arch: string,
+  platform: NodeJS.Platform,
+): TargetDuple {
+  // Return the underscore version
+  switch (platform) {
+    case "darwin":
+      return arch === "arm64" ? "darwin_arm64" as TargetDuple : "darwin_amd64" as TargetDuple;
+    case "linux":
+      return arch === "arm64" ? "linux_arm64" as TargetDuple : "linux_amd64" as TargetDuple;
     default:
       throw new Error(
         `Unsupported platform ${platform} for target duple conversion`,
@@ -105,9 +133,13 @@ export function stripTargetTriple(value: string): Option<string> {
     return some(strippedTriple);
   }
 
-  // Try to strip target duple suffix
+  // Try to strip target duple suffix (both hyphenated and underscore versions)
   const strippedDuple = TARGET_DUPLES.reduce(
-    (value, duple) => value.replace(new RegExp(`-${duple}$`), ""),
+    (value, duple) => {
+      // Replace suffix if it matches directly (handles both - and _)
+      const pattern = new RegExp(`[-_]${duple}$`);
+      return value.replace(pattern, "");
+    },
     value,
   );
 
